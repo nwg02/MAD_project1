@@ -396,7 +396,9 @@ class _HabitDetailState extends State<HabitDetail> {
                 ),
                 validator: (v) {
                   final n = double.tryParse(v ?? '');
-                  return n == null || n < 0 ? 'Enter a valid amount' : null;
+                  return n == null || !n.isFinite || n < 0
+                      ? 'Enter a valid amount'
+                      : null;
                 },
               ),
               TextField(
