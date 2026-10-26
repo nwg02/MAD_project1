@@ -1,14 +1,10 @@
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:habit_mastery/data/habit_suggestion.dart';
 
 void main() {
   group('Next-Step Habit Suggestion', () {
     test('uses current target when there is no history', () {
-      final result = suggestNextTarget(
-        currentTarget: 10,
-        recentAmounts: [],
-      );
+      final result = suggestNextTarget(currentTarget: 10, recentAmounts: []);
 
       expect(result.recommendedAmount, 10);
       expect(result.reason, contains('not enough'));
@@ -49,6 +45,16 @@ void main() {
       );
 
       expect(result.recommendedAmount, closeTo(11, 0.001));
+    });
+
+    test('zero activity demonstrates a limitation of the rule', () {
+      final result = suggestNextTarget(
+        currentTarget: 10,
+        recentAmounts: [0, 0, 0],
+      );
+
+      expect(result.recommendedAmount, closeTo(9, 0.001));
+      expect(result.reason, contains('below your target'));
     });
   });
 }
