@@ -517,6 +517,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       0,
       (sum, e) => sum + (e['amount'] as num).toDouble(),
     );
+    
+    final average = filteredEntries.isEmpty
+    ? 0.0
+    : total / filteredEntries.length;
 
     final habitSummaries = <String, Map<String, Object?>>{};
 
@@ -567,7 +571,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
           child: ListTile(
             leading: const Icon(Icons.insights),
             title: Text('${filteredEntries.length} activity entries'),
-            subtitle: Text('Combined recorded amount: $total'),
+            subtitle: Text(
+              'Combined recorded amount: ${total.toStringAsFixed(1)}'
+              '\nAverage per entry: ${average.toStringAsFixed(1)}',
+            ),
           ),
         ),
         
