@@ -521,6 +521,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final average = filteredEntries.isEmpty
     ? 0.0
     : total / filteredEntries.length;
+    
+    final completedCount = filteredEntries
+    .where((entry) => entry['completed'] == 1)
+    .length;
+
+    final completionRate = filteredEntries.isEmpty
+        ? 0.0
+        : completedCount / filteredEntries.length * 100;
 
     final habitSummaries = <String, Map<String, Object?>>{};
 
@@ -572,8 +580,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
             leading: const Icon(Icons.insights),
             title: Text('${filteredEntries.length} activity entries'),
             subtitle: Text(
-              'Combined recorded amount: ${total.toStringAsFixed(1)}'
-              '\nAverage per entry: ${average.toStringAsFixed(1)}',
+              'Combined recorded amount: ${total.toStringAsFixed(1)}\n'
+              'Average per entry: ${average.toStringAsFixed(1)}\n'
+              'Completion rate: ${completionRate.toStringAsFixed(1)}%',
             ),
           ),
         ),
