@@ -518,6 +518,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
       (sum, e) => sum + (e['amount'] as num).toDouble(),
     );
 
+    final habitSummaries = <String, Map<String, Object?>>{};
+
+    for (final entry in filteredEntries) {
+      final name = entry['habit_name'] as String;
+      final summary = habitSummaries.putIfAbsent(
+        name,
+        () => {'count': 0, 'total': 0.0},
+      );
+
+      summary['count'] = (summary['count'] as int) + 1;
+      summary['total'] =
+          (summary['total'] as double) + (entry['amount'] as num).toDouble();
+    }
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -556,6 +570,25 @@ class _HistoryScreenState extends State<HistoryScreen> {
             subtitle: Text('Combined recorded amount: $total'),
           ),
         ),
+        
+        const SizedBox(height: 12),
+        Text(
+          'Progress by habit',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 8),
+        ...habitSummaries.entries.map(
+          (item) => Card(
+            child: ListTile(
+              title: Text(item.key),
+              subtitle: Text('${item.value['count']} activity entries'),
+              trailing: Text(
+                'Total: ${(item.value['total'] as double).toStringAsFixed(1)}',
+              ),
+            ),
+          ),
+        ),
+
         const SizedBox(height: 8),
         if (loading)
           const Center(child: CircularProgressIndicator())
