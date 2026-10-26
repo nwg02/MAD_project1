@@ -63,6 +63,11 @@ class HabitDatabase {
   }
 
   Future<int> addEntry(Map<String, Object?> values) async {
+    final amount = values['amount'];
+    if (amount is! num || !amount.isFinite || amount < 0) {
+      throw ArgumentError('Activity amount must be a finite, non-negative number.');
+    }
+
     final db = await database;
     return db.insert('HabitEntry', values);
   }
