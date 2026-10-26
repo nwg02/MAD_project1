@@ -499,6 +499,9 @@ class _HabitDetailState extends State<HabitDetail> {
                       context: context,
                       builder: (context) => AlertDialog(
                         title: const Text('Delete activity?'),
+                        content: const Text(
+                          'This activity entry will be permanently deleted.',
+                        ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context, false),
