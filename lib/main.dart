@@ -1,7 +1,8 @@
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'data/habit_database.dart';
+import 'data/habit_suggestion.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,14 +67,8 @@ class _MainScreenState extends State<MainScreen> {
         selectedIndex: tab,
         onDestinationSelected: (value) => setState(() => tab = value),
         destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.history),
-            label: 'History',
-          ),
+          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.history), label: 'History'),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),
             label: 'Settings',
@@ -180,7 +175,9 @@ class _DashboardState extends State<Dashboard> {
             style: Theme.of(context).textTheme.headlineMedium,
           ),
           const SizedBox(height: 6),
-          Text('${items.where((h) => h['is_active'] == 1).length} active habits'),
+          Text(
+            '${items.where((h) => h['is_active'] == 1).length} active habits',
+          ),
           const SizedBox(height: 16),
           if (items.isEmpty)
             const Padding(
@@ -213,18 +210,12 @@ class _DashboardState extends State<Dashboard> {
                     if (value == 'toggle') toggle(habit);
                   },
                   itemBuilder: (_) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Text('Edit'),
-                    ),
+                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
                     PopupMenuItem(
                       value: 'toggle',
                       child: Text(active ? 'Pause' : 'Activate'),
                     ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Text('Delete'),
-                    ),
+                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
                   ],
                 ),
               ),
@@ -258,9 +249,7 @@ class _HabitFormState extends State<HabitForm> {
     final h = widget.habit;
     name = TextEditingController(text: h?['name'] as String? ?? '');
     category = TextEditingController(text: h?['category'] as String? ?? '');
-    target = TextEditingController(
-      text: h?['target_amount']?.toString() ?? '',
-    );
+    target = TextEditingController(text: h?['target_amount']?.toString() ?? '');
     unit = TextEditingController(text: h?['target_unit'] as String? ?? '');
   }
 
@@ -295,13 +284,14 @@ class _HabitFormState extends State<HabitForm> {
               ),
               TextFormField(
                 controller: target,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: const InputDecoration(labelText: 'Target amount'),
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return null;
                   final n = double.tryParse(v);
-                  return n == null || n <= 0
+                  return n == null || !n.isFinite || n <= 0
                       ? 'Enter a number above zero'
                       : null;
                 },
@@ -319,10 +309,7 @@ class _HabitFormState extends State<HabitForm> {
           onPressed: () => Navigator.pop(context, false),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: save,
-          child: const Text('Save'),
-        ),
+        FilledButton(onPressed: save, child: const Text('Save')),
       ],
     );
   }
@@ -357,6 +344,8 @@ class HabitDetail extends StatefulWidget {
 
 class _HabitDetailState extends State<HabitDetail> {
   List<Map<String, Object?>> items = [];
+  double? targetOverride;
+  bool suggestionDismissed = false;
 
   @override
   void initState() {
@@ -365,8 +354,9 @@ class _HabitDetailState extends State<HabitDetail> {
   }
 
   Future<void> load() async {
-    final result =
-        await HabitDatabase.instance.entries(widget.habit['id'] as int);
+    final result = await HabitDatabase.instance.entries(
+      widget.habit['id'] as int,
+    );
     if (mounted) setState(() => items = result);
   }
 
@@ -388,8 +378,9 @@ class _HabitDetailState extends State<HabitDetail> {
             children: [
               TextFormField(
                 controller: amountController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: InputDecoration(
                   labelText:
                       'Amount (${widget.habit['target_unit'] ?? 'units'})',
@@ -430,7 +421,8 @@ class _HabitDetailState extends State<HabitDetail> {
     if (result == null) return;
 
     final today = DateTime.now();
-    final date = '${today.year.toString().padLeft(4, '0')}-'
+    final date =
+        '${today.year.toString().padLeft(4, '0')}-'
         '${today.month.toString().padLeft(2, '0')}-'
         '${today.day.toString().padLeft(2, '0')}';
 
@@ -445,9 +437,95 @@ class _HabitDetailState extends State<HabitDetail> {
     await load();
   }
 
+  Future<void> applySuggestion(double amount) async {
+    final updatedHabit = Map<String, Object?>.from(widget.habit);
+    updatedHabit['target_amount'] = amount;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => HabitForm(habit: updatedHabit),
+    );
+
+    if (saved != true || !mounted) return;
+
+    final savedHabits = await HabitDatabase.instance.habits();
+    final savedHabit = savedHabits.firstWhere(
+      (habit) => habit['id'] == widget.habit['id'],
+    );
+
+    setState(() {
+      targetOverride = (savedHabit['target_amount'] as num?)?.toDouble();
+      suggestionDismissed = true;
+    });
+  }
+
+  Widget suggestionCard(HabitSuggestion suggestion, double? target) {
+    final canApply =
+        target != null && target.isFinite && target > 0 && items.isNotEmpty;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.lightbulb_outline),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Next-Step Habit Suggestion',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(suggestion.reason),
+            const SizedBox(height: 8),
+            Text(
+              'Suggested target: '
+              '${suggestion.recommendedAmount.toStringAsFixed(1)} '
+              '${widget.habit['target_unit'] ?? ''}',
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                if (canApply)
+                  FilledButton(
+                    onPressed: () =>
+                        applySuggestion(suggestion.recommendedAmount),
+                    child: const Text('Apply'),
+                  ),
+                TextButton(
+                  onPressed: () {
+                    setState(() => suggestionDismissed = true);
+                  },
+                  child: const Text('Not now'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final target = (widget.habit['target_amount'] as num?)?.toDouble();
+    final target =
+        targetOverride ?? (widget.habit['target_amount'] as num?)?.toDouble();
+
+    final suggestion = suggestNextTarget(
+      currentTarget: target ?? 0,
+      recentAmounts: items
+          .take(5)
+          .map((entry) => (entry['amount'] as num).toDouble())
+          .toList(),
+    );
+
     final total = items.fold<double>(
       0,
       (sum, e) => sum + (e['amount'] as num).toDouble(),
@@ -472,9 +550,9 @@ class _HabitDetailState extends State<HabitDetail> {
             'Target: ${target ?? 'Not set'} '
             '${widget.habit['target_unit'] ?? ''}',
           ),
-          Text(
-            'Total recorded: $total ${widget.habit['target_unit'] ?? ''}',
-          ),
+          Text('Total recorded: $total ${widget.habit['target_unit'] ?? ''}'),
+          const SizedBox(height: 16),
+          if (!suggestionDismissed) suggestionCard(suggestion, target),
           const SizedBox(height: 20),
           Text(
             'Activity history',
@@ -516,8 +594,9 @@ class _HabitDetailState extends State<HabitDetail> {
                     );
 
                     if (confirm == true) {
-                      await HabitDatabase.instance
-                          .deleteEntry(entry['id'] as int);
+                      await HabitDatabase.instance.deleteEntry(
+                        entry['id'] as int,
+                      );
                       await load();
                     }
                   },
@@ -581,11 +660,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
       (sum, e) => sum + (e['amount'] as num).toDouble(),
     );
 
-    final average =
-        filteredEntries.isEmpty ? 0.0 : total / filteredEntries.length;
+    final average = filteredEntries.isEmpty
+        ? 0.0
+        : total / filteredEntries.length;
 
-    final completedCount =
-        filteredEntries.where((entry) => entry['completed'] == 1).length;
+    final completedCount = filteredEntries
+        .where((entry) => entry['completed'] == 1)
+        .length;
 
     final completionRate = filteredEntries.isEmpty
         ? 0.0
@@ -638,8 +719,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
         SizedBox(height: compact ? 6 : 12),
         Card(
           child: ListTile(
-            visualDensity:
-                compact ? VisualDensity.compact : VisualDensity.standard,
+            visualDensity: compact
+                ? VisualDensity.compact
+                : VisualDensity.standard,
             leading: const Icon(Icons.insights),
             title: Text('${filteredEntries.length} activity entries'),
             subtitle: Text(
@@ -661,8 +743,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ...habitSummaries.entries.map(
             (item) => Card(
               child: ListTile(
-                visualDensity:
-                    compact ? VisualDensity.compact : VisualDensity.standard,
+                visualDensity: compact
+                    ? VisualDensity.compact
+                    : VisualDensity.standard,
                 title: Text(item.key),
                 subtitle: Text('${item.value['count']} activity entries'),
                 trailing: Text(
@@ -679,8 +762,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
         else
           ...filteredEntries.map(
             (e) => ListTile(
-              visualDensity:
-                  compact ? VisualDensity.compact : VisualDensity.standard,
+              visualDensity: compact
+                  ? VisualDensity.compact
+                  : VisualDensity.standard,
               title: Text(e['habit_name'] as String),
               subtitle: Text(
                 '${e['entry_date']} • ${e['amount']}'
