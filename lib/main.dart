@@ -593,17 +593,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 8),
-        ...habitSummaries.entries.map(
-          (item) => Card(
-            child: ListTile(
-              title: Text(item.key),
-              subtitle: Text('${item.value['count']} activity entries'),
-              trailing: Text(
-                'Total: ${(item.value['total'] as double).toStringAsFixed(1)}',
+        if (habitSummaries.isEmpty)
+          const Text('No progress summaries available yet.')
+        else
+          ...habitSummaries.entries.map(
+            (item) => Card(
+              child: ListTile(
+                title: Text(item.key),
+                subtitle: Text('${item.value['count']} activity entries'),
+                trailing: Text(
+                  'Total: ${(item.value['total'] as double).toStringAsFixed(1)}',
+                ),
               ),
             ),
           ),
-        ),
 
         const SizedBox(height: 8),
         if (loading)
