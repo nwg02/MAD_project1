@@ -66,9 +66,18 @@ class _MainScreenState extends State<MainScreen> {
         selectedIndex: tab,
         onDestinationSelected: (value) => setState(() => tab = value),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.history), label: 'History'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Settings'),
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.history),
+            label: 'History',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            label: 'Settings',
+          ),
         ],
       ),
     );
@@ -77,6 +86,7 @@ class _MainScreenState extends State<MainScreen> {
 
 class Dashboard extends StatefulWidget {
   final VoidCallback onChanged;
+
   const Dashboard({super.key, required this.onChanged});
 
   @override
@@ -137,21 +147,38 @@ class _DashboardState extends State<Dashboard> {
         ],
       ),
     );
+
     if (confirm == true) {
       await HabitDatabase.instance.deleteHabit(habit['id'] as int);
       await load();
     }
   }
 
+  Future<void> toggle(Map<String, Object?> habit) async {
+    await HabitDatabase.instance.saveHabit({
+      'name': habit['name'],
+      'category': habit['category'],
+      'target_amount': habit['target_amount'],
+      'target_unit': habit['target_unit'],
+      'created_at': habit['created_at'],
+      'is_active': habit['is_active'] == 1 ? 0 : 1,
+    }, id: habit['id'] as int);
+    await load();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (loading) return const Center(child: CircularProgressIndicator());
+
     return RefreshIndicator(
       onRefresh: load,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('Your habits', style: Theme.of(context).textTheme.headlineMedium),
+          Text(
+            'Your habits',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
           const SizedBox(height: 6),
           Text('${items.where((h) => h['is_active'] == 1).length} active habits'),
           const SizedBox(height: 16),
@@ -165,7 +192,11 @@ class _DashboardState extends State<Dashboard> {
             return Card(
               child: ListTile(
                 leading: CircleAvatar(
-                  child: Icon(active ? Icons.check_circle_outline : Icons.pause_circle_outline),
+                  child: Icon(
+                    active
+                        ? Icons.check_circle_outline
+                        : Icons.pause_circle_outline,
+                  ),
                 ),
                 title: Text(habit['name'] as String),
                 subtitle: Text(
@@ -182,12 +213,18 @@ class _DashboardState extends State<Dashboard> {
                     if (value == 'toggle') toggle(habit);
                   },
                   itemBuilder: (_) => [
-                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Text('Edit'),
+                    ),
                     PopupMenuItem(
                       value: 'toggle',
                       child: Text(active ? 'Pause' : 'Activate'),
                     ),
-                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Text('Delete'),
+                    ),
                   ],
                 ),
               ),
@@ -197,22 +234,11 @@ class _DashboardState extends State<Dashboard> {
       ),
     );
   }
-
-  Future<void> toggle(Map<String, Object?> habit) async {
-    await HabitDatabase.instance.saveHabit({
-      'name': habit['name'],
-      'category': habit['category'],
-      'target_amount': habit['target_amount'],
-      'target_unit': habit['target_unit'],
-      'created_at': habit['created_at'],
-      'is_active': habit['is_active'] == 1 ? 0 : 1,
-    }, id: habit['id'] as int);
-    await load();
-  }
 }
 
 class HabitForm extends StatefulWidget {
   final Map<String, Object?>? habit;
+
   const HabitForm({super.key, this.habit});
 
   @override
@@ -260,9 +286,8 @@ class _HabitFormState extends State<HabitForm> {
               TextFormField(
                 controller: name,
                 decoration: const InputDecoration(labelText: 'Habit name *'),
-                validator: (v) => v == null || v.trim().isEmpty
-                    ? 'Enter a name'
-                    : null,
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Enter a name' : null,
               ),
               TextFormField(
                 controller: category,
@@ -270,12 +295,15 @@ class _HabitFormState extends State<HabitForm> {
               ),
               TextFormField(
                 controller: target,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(labelText: 'Target amount'),
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return null;
                   final n = double.tryParse(v);
-                  return n == null || n <= 0 ? 'Enter a number above zero' : null;
+                  return n == null || n <= 0
+                      ? 'Enter a number above zero'
+                      : null;
                 },
               ),
               TextFormField(
@@ -302,6 +330,7 @@ class _HabitFormState extends State<HabitForm> {
   Future<void> save() async {
     if (!formKey.currentState!.validate()) return;
     final old = widget.habit;
+
     await HabitDatabase.instance.saveHabit({
       'name': name.text.trim(),
       'category': category.text.trim().isEmpty ? null : category.text.trim(),
@@ -312,12 +341,14 @@ class _HabitFormState extends State<HabitForm> {
       'created_at': old?['created_at'] ?? DateTime.now().toIso8601String(),
       'is_active': old?['is_active'] ?? 1,
     }, id: old?['id'] as int?);
+
     if (mounted) Navigator.pop(context, true);
   }
 }
 
 class HabitDetail extends StatefulWidget {
   final Map<String, Object?> habit;
+
   const HabitDetail({super.key, required this.habit});
 
   @override
@@ -334,7 +365,8 @@ class _HabitDetailState extends State<HabitDetail> {
   }
 
   Future<void> load() async {
-    final result = await HabitDatabase.instance.entries(widget.habit['id'] as int);
+    final result =
+        await HabitDatabase.instance.entries(widget.habit['id'] as int);
     if (mounted) setState(() => items = result);
   }
 
@@ -344,6 +376,7 @@ class _HabitDetailState extends State<HabitDetail> {
     );
     final noteController = TextEditingController();
     final key = GlobalKey<FormState>();
+
     final result = await showDialog<Map<String, Object?>>(
       context: context,
       builder: (context) => AlertDialog(
@@ -355,9 +388,11 @@ class _HabitDetailState extends State<HabitDetail> {
             children: [
               TextFormField(
                 controller: amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
-                  labelText: 'Amount (${widget.habit['target_unit'] ?? 'units'})',
+                  labelText:
+                      'Amount (${widget.habit['target_unit'] ?? 'units'})',
                 ),
                 validator: (v) {
                   final n = double.tryParse(v ?? '');
@@ -389,11 +424,14 @@ class _HabitDetailState extends State<HabitDetail> {
         ],
       ),
     );
+
     if (result == null) return;
+
     final today = DateTime.now();
     final date = '${today.year.toString().padLeft(4, '0')}-'
         '${today.month.toString().padLeft(2, '0')}-'
         '${today.day.toString().padLeft(2, '0')}';
+
     await HabitDatabase.instance.addEntry({
       'habit_id': widget.habit['id'],
       'entry_date': date,
@@ -401,6 +439,7 @@ class _HabitDetailState extends State<HabitDetail> {
       'note': (result['note'] as String).isEmpty ? null : result['note'],
       'completed': 1,
     });
+
     await load();
   }
 
@@ -427,49 +466,65 @@ class _HabitDetailState extends State<HabitDetail> {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
-          Text('Target: ${target ?? 'Not set'} ${widget.habit['target_unit'] ?? ''}'),
-          Text('Total recorded: $total ${widget.habit['target_unit'] ?? ''}'),
+          Text(
+            'Target: ${target ?? 'Not set'} '
+            '${widget.habit['target_unit'] ?? ''}',
+          ),
+          Text(
+            'Total recorded: $total ${widget.habit['target_unit'] ?? ''}',
+          ),
           const SizedBox(height: 20),
-          Text('Activity history', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            'Activity history',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           if (items.isEmpty) const Text('No activity recorded yet.'),
-          ...items.map((entry) => Card(
-            child: ListTile(
-              title: Text('${entry['amount']} ${widget.habit['target_unit'] ?? ''}'),
-              subtitle: Text('${entry['entry_date']}${entry['note'] == null ? '' : '\n${entry['note']}'}'),
-              isThreeLine: entry['note'] != null,
-              trailing: IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: () async {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Delete activity?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancel'),
-                        ),
-                        FilledButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text('Delete'),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (confirm == true) {
-                    await HabitDatabase.instance.deleteEntry(entry['id'] as int);
-                    await load();
-                  }
-                },
+          ...items.map(
+            (entry) => Card(
+              child: ListTile(
+                title: Text(
+                  '${entry['amount']} ${widget.habit['target_unit'] ?? ''}',
+                ),
+                subtitle: Text(
+                  '${entry['entry_date']}'
+                  '${entry['note'] == null ? '' : '\n${entry['note']}'}',
+                ),
+                isThreeLine: entry['note'] != null,
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Delete activity?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancel'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      await HabitDatabase.instance
+                          .deleteEntry(entry['id'] as int);
+                      await load();
+                    }
+                  },
+                ),
               ),
             ),
-          )),
+          ),
         ],
       ),
     );
   }
 }
-
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -483,6 +538,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   List<Map<String, Object?>> habits = [];
   int? selectedHabitId;
   bool loading = true;
+  bool compact = false;
 
   @override
   void initState() {
@@ -496,11 +552,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
       HabitDatabase.instance.habits(),
     ]);
 
+    final prefs = await SharedPreferences.getInstance();
+    final compactSetting = prefs.getBool('compact') ?? false;
+
     if (!mounted) return;
 
     setState(() {
       entries = results[0];
       habits = results[1];
+      compact = compactSetting;
       loading = false;
     });
   }
@@ -509,22 +569,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget build(BuildContext context) {
     final filteredEntries = selectedHabitId == null
         ? entries
-        : entries
-            .where((e) => e['habit_id'] == selectedHabitId)
-            .toList();
+        : entries.where((e) => e['habit_id'] == selectedHabitId).toList();
 
     final total = filteredEntries.fold<double>(
       0,
       (sum, e) => sum + (e['amount'] as num).toDouble(),
     );
-    
-    final average = filteredEntries.isEmpty
-    ? 0.0
-    : total / filteredEntries.length;
-    
-    final completedCount = filteredEntries
-    .where((entry) => entry['completed'] == 1)
-    .length;
+
+    final average =
+        filteredEntries.isEmpty ? 0.0 : total / filteredEntries.length;
+
+    final completedCount =
+        filteredEntries.where((entry) => entry['completed'] == 1).length;
 
     final completionRate = filteredEntries.isEmpty
         ? 0.0
@@ -545,13 +601,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(compact ? 8 : 16),
       children: [
         Text(
           'History & insights',
           style: Theme.of(context).textTheme.headlineSmall,
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: compact ? 6 : 12),
         DropdownButtonFormField<int?>(
           initialValue: selectedHabitId,
           decoration: const InputDecoration(
@@ -574,9 +630,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
             setState(() => selectedHabitId = value);
           },
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: compact ? 6 : 12),
         Card(
           child: ListTile(
+            visualDensity:
+                compact ? VisualDensity.compact : VisualDensity.standard,
             leading: const Icon(Icons.insights),
             title: Text('${filteredEntries.length} activity entries'),
             subtitle: Text(
@@ -586,19 +644,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
           ),
         ),
-        
-        const SizedBox(height: 12),
+        SizedBox(height: compact ? 6 : 12),
         Text(
           'Progress by habit',
           style: Theme.of(context).textTheme.titleLarge,
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: compact ? 4 : 8),
         if (habitSummaries.isEmpty)
           const Text('No progress summaries available yet.')
         else
           ...habitSummaries.entries.map(
             (item) => Card(
               child: ListTile(
+                visualDensity:
+                    compact ? VisualDensity.compact : VisualDensity.standard,
                 title: Text(item.key),
                 subtitle: Text('${item.value['count']} activity entries'),
                 trailing: Text(
@@ -607,8 +666,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
             ),
           ),
-
-        const SizedBox(height: 8),
+        SizedBox(height: compact ? 4 : 8),
         if (loading)
           const Center(child: CircularProgressIndicator())
         else if (filteredEntries.isEmpty)
@@ -616,6 +674,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
         else
           ...filteredEntries.map(
             (e) => ListTile(
+              visualDensity:
+                  compact ? VisualDensity.compact : VisualDensity.standard,
               title: Text(e['habit_name'] as String),
               subtitle: Text(
                 '${e['entry_date']} • ${e['amount']}'
@@ -627,7 +687,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 }
-
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -668,7 +727,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Text('Settings', style: Theme.of(context).textTheme.headlineSmall),
         SwitchListTile(
           title: const Text('Daily reminder preference'),
-          subtitle: const Text('Stores your preference locally; notifications are not enabled.'),
+          subtitle: const Text(
+            'Stores your preference locally; notifications are not enabled.',
+          ),
           value: reminders,
           onChanged: (v) {
             setState(() => reminders = v);
@@ -687,7 +748,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const ListTile(
           leading: Icon(Icons.cloud_off),
           title: Text('Offline-first'),
-          subtitle: Text('Habits and activity are stored locally on this device.'),
+          subtitle: Text(
+            'Habits and activity are stored locally on this device.',
+          ),
         ),
       ],
     );
