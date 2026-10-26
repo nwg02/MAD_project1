@@ -470,6 +470,7 @@ class _HabitDetailState extends State<HabitDetail> {
   }
 }
 
+
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
@@ -479,6 +480,9 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   List<Map<String, Object?>> entries = [];
+  List<Map<String, Object?>> habits = [];
+  int? selectedHabitId;
+  bool loading = true;
 
   @override
   void initState() {
@@ -487,13 +491,29 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> load() async {
-    final result = await HabitDatabase.instance.allEntries();
-    if (mounted) setState(() => entries = result);
+    final results = await Future.wait([
+      HabitDatabase.instance.allEntries(),
+      HabitDatabase.instance.habits(),
+    ]);
+
+    if (!mounted) return;
+
+    setState(() {
+      entries = results[0];
+      habits = results[1];
+      loading = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final total = entries.fold<double>(
+    final filteredEntries = selectedHabitId == null
+        ? entries
+        : entries
+            .where((e) => e['habit_id'] == selectedHabitId)
+            .toList();
+
+    final total = filteredEntries.fold<double>(
       0,
       (sum, e) => sum + (e['amount'] as num).toDouble(),
     );
@@ -501,26 +521,61 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('History & insights', style: Theme.of(context).textTheme.headlineSmall),
+        Text(
+          'History & insights',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<int?>(
+          initialValue: selectedHabitId,
+          decoration: const InputDecoration(
+            labelText: 'Filter by habit',
+            border: OutlineInputBorder(),
+          ),
+          items: [
+            const DropdownMenuItem<int?>(
+              value: null,
+              child: Text('All habits'),
+            ),
+            ...habits.map(
+              (habit) => DropdownMenuItem<int?>(
+                value: habit['id'] as int,
+                child: Text(habit['name'] as String),
+              ),
+            ),
+          ],
+          onChanged: (value) {
+            setState(() => selectedHabitId = value);
+          },
+        ),
         const SizedBox(height: 12),
         Card(
           child: ListTile(
             leading: const Icon(Icons.insights),
-            title: Text('${entries.length} activity entries'),
+            title: Text('${filteredEntries.length} activity entries'),
             subtitle: Text('Combined recorded amount: $total'),
           ),
         ),
         const SizedBox(height: 8),
-        if (entries.isEmpty) const Text('Your activity will appear here after you log a habit.'),
-        ...entries.map((e) => ListTile(
-          title: Text(e['habit_name'] as String),
-          subtitle: Text('${e['entry_date']} • ${e['amount']}'
-              '${e['note'] == null ? '' : ' • ${e['note']}'}'),
-        )),
+        if (loading)
+          const Center(child: CircularProgressIndicator())
+        else if (filteredEntries.isEmpty)
+          const Text('No activity found for this selection.')
+        else
+          ...filteredEntries.map(
+            (e) => ListTile(
+              title: Text(e['habit_name'] as String),
+              subtitle: Text(
+                '${e['entry_date']} • ${e['amount']}'
+                '${e['note'] == null ? '' : ' • ${e['note']}'}',
+              ),
+            ),
+          ),
       ],
     );
   }
 }
+
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
