@@ -79,6 +79,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
+
 class Dashboard extends StatefulWidget {
   final VoidCallback onChanged;
 
@@ -90,6 +91,7 @@ class Dashboard extends StatefulWidget {
 
 class _DashboardState extends State<Dashboard> {
   List<Map<String, Object?>> items = [];
+  Map<int, double> todayAmounts = {};
   bool loading = true;
 
   @override
@@ -100,9 +102,30 @@ class _DashboardState extends State<Dashboard> {
 
   Future<void> load() async {
     final result = await HabitDatabase.instance.habits();
+    final now = DateTime.now();
+    final today =
+        '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+
+    final amounts = <int, double>{};
+
+    for (final habit in result) {
+      final id = habit['id'] as int;
+      final entries = await HabitDatabase.instance.entries(id);
+
+      amounts[id] = entries
+          .where((entry) => (entry['entry_date'] as String).startsWith(today))
+          .fold<double>(
+            0,
+            (sum, entry) => sum + (entry['amount'] as num).toDouble(),
+          );
+    }
+
     if (!mounted) return;
     setState(() {
       items = result;
+      todayAmounts = amounts;
       loading = false;
     });
   }
@@ -121,7 +144,10 @@ class _DashboardState extends State<Dashboard> {
       context: context,
       builder: (_) => HabitForm(habit: habit),
     );
-    if (result == true) await load();
+    if (result == true) {
+      await load();
+      widget.onChanged();
+    }
   }
 
   Future<void> deleteHabit(Map<String, Object?> habit) async {
@@ -146,6 +172,7 @@ class _DashboardState extends State<Dashboard> {
     if (confirm == true) {
       await HabitDatabase.instance.deleteHabit(habit['id'] as int);
       await load();
+      widget.onChanged();
     }
   }
 
@@ -159,64 +186,278 @@ class _DashboardState extends State<Dashboard> {
       'is_active': habit['is_active'] == 1 ? 0 : 1,
     }, id: habit['id'] as int);
     await load();
+    widget.onChanged();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (loading) return const Center(child: CircularProgressIndicator());
+    if (loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final activeHabits =
+        items.where((habit) => habit['is_active'] == 1).toList();
+
+    final completed = activeHabits.where((habit) {
+      final target = (habit['target_amount'] as num?)?.toDouble() ?? 0;
+      return target > 0 &&
+          (todayAmounts[habit['id'] as int] ?? 0) >= target;
+    }).length;
+
+    final progress =
+        activeHabits.isEmpty ? 0.0 : completed / activeHabits.length;
 
     return RefreshIndicator(
       onRefresh: load,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
         children: [
           Text(
             'Your habits',
-            style: Theme.of(context).textTheme.headlineMedium,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 6),
           Text(
-            '${items.where((h) => h['is_active'] == 1).length} active habits',
+            'Small steps, consistent progress.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 22),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        "TODAY'S PROGRESS",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.wb_sunny_outlined,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${(progress * 100).round()}%',
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const SizedBox(width: 10),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        '$completed of ${activeHabits.length} habits reached',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 10,
+                    backgroundColor:
+                        Theme.of(context).colorScheme.surface.withAlpha(130),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  activeHabits.isEmpty
+                      ? 'Add a habit to start tracking your progress.'
+                      : completed == activeHabits.length
+                          ? 'Great work! You reached every active target today.'
+                          : 'Keep going. Every entry moves you forward.',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 26),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  "Today's habits",
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ),
+              Text(
+                '${activeHabits.length} active',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           if (items.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24),
-              child: Text('No habits yet. Tap New habit to get started.'),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    const Icon(Icons.spa_outlined, size: 40),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Start with one small habit',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text('Tap New habit to get started.'),
+                  ],
+                ),
+              ),
             ),
           ...items.map((habit) {
             final active = habit['is_active'] == 1;
+            final id = habit['id'] as int;
+            final amount = todayAmounts[id] ?? 0;
+            final target =
+                (habit['target_amount'] as num?)?.toDouble() ?? 0;
+            final ratio = target > 0
+                ? (amount / target).clamp(0.0, 1.0).toDouble()
+                : 0.0;
+            final reached = target > 0 && amount >= target;
+
             return Card(
-              child: ListTile(
-                leading: CircleAvatar(
-                  child: Icon(
-                    active
-                        ? Icons.check_circle_outline
-                        : Icons.pause_circle_outline,
-                  ),
+              margin: const EdgeInsets.only(bottom: 12),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant,
                 ),
-                title: Text(habit['name'] as String),
-                subtitle: Text(
-                  '${habit['category'] ?? 'General'} • '
-                  '${habit['target_amount'] ?? 'No target'} '
-                  '${habit['target_unit'] ?? ''}'
-                  '${active ? '' : ' • Paused'}',
-                ),
+              ),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
                 onTap: () => openHabit(habit),
-                trailing: PopupMenuButton<String>(
-                  onSelected: (value) {
-                    if (value == 'edit') editHabit(habit);
-                    if (value == 'delete') deleteHabit(habit);
-                    if (value == 'toggle') toggle(habit);
-                  },
-                  itemBuilder: (_) => [
-                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                    PopupMenuItem(
-                      value: 'toggle',
-                      child: Text(active ? 'Pause' : 'Activate'),
-                    ),
-                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                  ],
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor:
+                                Theme.of(context).colorScheme.secondaryContainer,
+                            child: Icon(
+                              reached
+                                  ? Icons.check_rounded
+                                  : Icons.spa_outlined,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSecondaryContainer,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  habit['name'] as String,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  '${habit['category'] ?? 'General'}'
+                                  '${active ? '' : ' • Paused'}',
+                                  style:
+                                      Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          PopupMenuButton<String>(
+                            onSelected: (value) {
+                              if (value == 'edit') editHabit(habit);
+                              if (value == 'delete') deleteHabit(habit);
+                              if (value == 'toggle') toggle(habit);
+                            },
+                            itemBuilder: (_) => [
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Text('Edit'),
+                              ),
+                              PopupMenuItem(
+                                value: 'toggle',
+                                child: Text(active ? 'Pause' : 'Activate'),
+                              ),
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              target > 0
+                                  ? '${amount.toStringAsFixed(amount % 1 == 0 ? 0 : 1)}'
+                                      ' / ${target.toStringAsFixed(target % 1 == 0 ? 0 : 1)}'
+                                      ' ${habit['target_unit'] ?? ''}'
+                                  : 'No target set',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ),
+                          Text(
+                            target > 0
+                                ? '${(ratio * 100).round()}%'
+                                : 'Set a target',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: LinearProgressIndicator(
+                          value: ratio,
+                          minHeight: 8,
+                        ),
+                      ),
+                      if (reached) ...[
+                        const SizedBox(height: 10),
+                        const Row(
+                          children: [
+                            Icon(Icons.check_circle, size: 18),
+                            SizedBox(width: 6),
+                            Text('Daily target reached'),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             );
@@ -226,6 +467,7 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 }
+
 
 class HabitForm extends StatefulWidget {
   final Map<String, Object?>? habit;
