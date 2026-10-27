@@ -1,12 +1,31 @@
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/habit_database.dart';
 import 'data/habit_suggestion.dart';
 
+const Color charcoal = Color(0xFF303030);
+const Color charcoalLight = Color(0xFF484848);
+const Color pageBackground = Color(0xFFF7F7F7);
+const Color borderColor = Color(0xFFD6D6D6);
+const Color mutedText = Color(0xFF595959);
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await HabitDatabase.instance.database;
+
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      systemNavigationBarColor: Colors.white,
+      systemNavigationBarDividerColor: Colors.white,
+      systemNavigationBarIconBrightness: Brightness.dark,
+      statusBarColor: Colors.white,
+      statusBarIconBrightness: Brightness.dark,
+    ),
+  );
+
   runApp(const HabitMasteryApp());
 }
 
@@ -19,8 +38,112 @@ class HabitMasteryApp extends StatelessWidget {
       title: 'Habit Mastery',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
+        scaffoldBackgroundColor: pageBackground,
+        colorScheme: const ColorScheme.light(
+          primary: charcoal,
+          onPrimary: Colors.white,
+          secondary: charcoalLight,
+          onSecondary: Colors.white,
+          surface: Colors.white,
+          onSurface: Color(0xFF202020),
+          outline: borderColor,
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: charcoal,
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          titleTextStyle: TextStyle(
+            color: charcoal,
+            fontSize: 23,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        cardTheme: CardThemeData(
+          color: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: borderColor),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          labelStyle: const TextStyle(color: charcoal),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 15,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(5),
+            borderSide: const BorderSide(color: borderColor),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(5),
+            borderSide: const BorderSide(color: borderColor),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(5),
+            borderSide: const BorderSide(color: charcoal, width: 1.5),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: charcoal,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(100, 46),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(5),
+            ),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: charcoal,
+            minimumSize: const Size(100, 46),
+            side: const BorderSide(color: charcoalLight),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(5),
+            ),
+          ),
+        ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: charcoal,
+          foregroundColor: Colors.white,
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          indicatorColor: charcoal,
+          height: 76,
+          elevation: 0,
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          iconTheme: WidgetStateProperty.resolveWith<IconThemeData?>(
+            (states) => IconThemeData(
+              color: states.contains(WidgetState.selected)
+                  ? Colors.white
+                  : charcoal,
+            ),
+          ),
+          labelTextStyle: WidgetStateProperty.resolveWith<TextStyle?>(
+            (states) => TextStyle(
+              color: charcoal,
+              fontSize: 12,
+              fontWeight: states.contains(WidgetState.selected)
+                  ? FontWeight.w700
+                  : FontWeight.w500,
+            ),
+          ),
+        ),
+        dividerColor: borderColor,
+        progressIndicatorTheme: const ProgressIndicatorThemeData(
+          color: charcoal,
+          linearTrackColor: Color(0xFFE6E6E6),
+        ),
       ),
       home: const MainScreen(),
     );
@@ -37,14 +160,19 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int tab = 0;
 
-  void refresh() => setState(() {});
+  void refresh() {
+    setState(() {});
+  }
 
   Future<void> createHabit() async {
     final result = await showDialog<bool>(
       context: context,
       builder: (_) => const HabitForm(),
     );
-    if (result == true) refresh();
+
+    if (result == true && mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -56,21 +184,39 @@ class _MainScreenState extends State<MainScreen> {
     ];
 
     return Scaffold(
+      backgroundColor: pageBackground,
       appBar: AppBar(title: const Text('Habit Mastery')),
-      body: pages[tab],
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: createHabit,
-        icon: const Icon(Icons.add),
-        label: const Text('New habit'),
-      ),
+      body: IndexedStack(index: tab, children: pages),
+      floatingActionButton: tab == 0
+          ? FloatingActionButton.extended(
+              onPressed: createHabit,
+              backgroundColor: charcoal,
+              foregroundColor: Colors.white,
+              elevation: 3,
+              icon: const Icon(Icons.add),
+              label: const Text(
+                'New habit',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            )
+          : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: tab,
         onDestinationSelected: (value) => setState(() => tab = value),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.history), label: 'History'),
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Dashboard',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.history),
+            selectedIcon: Icon(Icons.history),
+            label: 'History',
+          ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
             label: 'Settings',
           ),
         ],
@@ -78,7 +224,6 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 }
-
 
 class Dashboard extends StatefulWidget {
   final VoidCallback onChanged;
@@ -91,7 +236,6 @@ class Dashboard extends StatefulWidget {
 
 class _DashboardState extends State<Dashboard> {
   List<Map<String, Object?>> items = [];
-  Map<int, double> todayAmounts = {};
   bool loading = true;
 
   @override
@@ -102,30 +246,10 @@ class _DashboardState extends State<Dashboard> {
 
   Future<void> load() async {
     final result = await HabitDatabase.instance.habits();
-    final now = DateTime.now();
-    final today =
-        '${now.year.toString().padLeft(4, '0')}-'
-        '${now.month.toString().padLeft(2, '0')}-'
-        '${now.day.toString().padLeft(2, '0')}';
-
-    final amounts = <int, double>{};
-
-    for (final habit in result) {
-      final id = habit['id'] as int;
-      final entries = await HabitDatabase.instance.entries(id);
-
-      amounts[id] = entries
-          .where((entry) => (entry['entry_date'] as String).startsWith(today))
-          .fold<double>(
-            0,
-            (sum, entry) => sum + (entry['amount'] as num).toDouble(),
-          );
-    }
-
     if (!mounted) return;
+
     setState(() {
       items = result;
-      todayAmounts = amounts;
       loading = false;
     });
   }
@@ -135,6 +259,8 @@ class _DashboardState extends State<Dashboard> {
       context,
       MaterialPageRoute(builder: (_) => HabitDetail(habit: habit)),
     );
+
+    if (!mounted) return;
     await load();
     widget.onChanged();
   }
@@ -144,7 +270,8 @@ class _DashboardState extends State<Dashboard> {
       context: context,
       builder: (_) => HabitForm(habit: habit),
     );
-    if (result == true) {
+
+    if (result == true && mounted) {
       await load();
       widget.onChanged();
     }
@@ -155,7 +282,9 @@ class _DashboardState extends State<Dashboard> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete habit?'),
-        content: Text('Delete "${habit['name']}" and its activity history?'),
+        content: Text(
+          'Delete "${habit['name']}" and its activity history?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -171,6 +300,7 @@ class _DashboardState extends State<Dashboard> {
 
     if (confirm == true) {
       await HabitDatabase.instance.deleteHabit(habit['id'] as int);
+      if (!mounted) return;
       await load();
       widget.onChanged();
     }
@@ -185,6 +315,8 @@ class _DashboardState extends State<Dashboard> {
       'created_at': habit['created_at'],
       'is_active': habit['is_active'] == 1 ? 0 : 1,
     }, id: habit['id'] as int);
+
+    if (!mounted) return;
     await load();
     widget.onChanged();
   }
@@ -198,201 +330,139 @@ class _DashboardState extends State<Dashboard> {
     final activeHabits =
         items.where((habit) => habit['is_active'] == 1).toList();
 
-    final completed = activeHabits.where((habit) {
-      final target = (habit['target_amount'] as num?)?.toDouble() ?? 0;
-      return target > 0 &&
-          (todayAmounts[habit['id'] as int] ?? 0) >= target;
-    }).length;
-
-    final progress =
-        activeHabits.isEmpty ? 0.0 : completed / activeHabits.length;
-
     return RefreshIndicator(
       onRefresh: load,
+      color: charcoal,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
         children: [
           Text(
             'Your habits',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
+                  color: charcoal,
                 ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 5),
           Text(
-            'Small steps, consistent progress.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+            '${activeHabits.length} active '
+            '${activeHabits.length == 1 ? 'habit' : 'habits'}',
+            style: const TextStyle(color: mutedText, fontSize: 15),
           ),
           const SizedBox(height: 22),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        "TODAY'S PROGRESS",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.1,
-                        ),
-                      ),
-                    ),
-                    Icon(
-                      Icons.wb_sunny_outlined,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${(progress * 100).round()}%',
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    const SizedBox(width: 10),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        '$completed of ${activeHabits.length} habits reached',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 10,
-                    backgroundColor:
-                        Theme.of(context).colorScheme.surface.withAlpha(130),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  activeHabits.isEmpty
-                      ? 'Add a habit to start tracking your progress.'
-                      : completed == activeHabits.length
-                          ? 'Great work! You reached every active target today.'
-                          : 'Keep going. Every entry moves you forward.',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 26),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  "Today's habits",
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-              ),
-              Text(
-                '${activeHabits.length} active',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
           if (items.isEmpty)
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   children: [
-                    const Icon(Icons.spa_outlined, size: 40),
+                    const Icon(Icons.track_changes, size: 42, color: charcoal),
                     const SizedBox(height: 12),
                     const Text(
-                      'Start with one small habit',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      'Start building a habit',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                    const SizedBox(height: 6),
-                    const Text('Tap New habit to get started.'),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Create your first habit to start tracking your progress.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: mutedText),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: () async {
+                        final result = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => const HabitForm(),
+                        );
+                        if (result == true && mounted) await load();
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Create habit'),
+                    ),
                   ],
                 ),
               ),
-            ),
-          ...items.map((habit) {
-            final active = habit['is_active'] == 1;
-            final id = habit['id'] as int;
-            final amount = todayAmounts[id] ?? 0;
-            final target =
-                (habit['target_amount'] as num?)?.toDouble() ?? 0;
-            final ratio = target > 0
-                ? (amount / target).clamp(0.0, 1.0).toDouble()
-                : 0.0;
-            final reached = target > 0 && amount >= target;
+            )
+          else
+            ...items.map((habit) {
+              final active = habit['is_active'] == 1;
+              final target = habit['target_amount'];
+              final unit = habit['target_unit'] as String? ?? '';
+              final category = habit['category'] as String? ?? 'General';
 
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                ),
-              ),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () => openHabit(habit),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Card(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => openHabit(habit),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 16,
+                      ),
+                      child: Row(
                         children: [
-                          CircleAvatar(
-                            backgroundColor:
-                                Theme.of(context).colorScheme.secondaryContainer,
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: active
+                                  ? const Color(0xFFEAEAEA)
+                                  : const Color(0xFFF4F4F4),
+                              borderRadius: BorderRadius.circular(24),
+                            ),
                             child: Icon(
-                              reached
-                                  ? Icons.check_rounded
-                                  : Icons.spa_outlined,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSecondaryContainer,
+                              active
+                                  ? Icons.check_circle_outline
+                                  : Icons.pause_circle_outline,
+                              color: charcoal,
+                              size: 27,
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   habit['name'] as String,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w700,
+                                    color: charcoal,
+                                  ),
                                 ),
-                                const SizedBox(height: 3),
+                                const SizedBox(height: 6),
                                 Text(
-                                  '${habit['category'] ?? 'General'}'
-                                  '${active ? '' : ' • Paused'}',
-                                  style:
-                                      Theme.of(context).textTheme.bodySmall,
+                                  '$category • ${target ?? 'No target'}'
+                                  '${unit.isEmpty ? '' : ' $unit'}',
+                                  style: const TextStyle(
+                                    color: mutedText,
+                                    fontSize: 14,
+                                  ),
                                 ),
+                                if (!active) ...[
+                                  const SizedBox(height: 5),
+                                  const Text(
+                                    'Paused',
+                                    style: TextStyle(
+                                      color: charcoal,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
                           PopupMenuButton<String>(
+                            tooltip: 'Habit options',
+                            icon: const Icon(Icons.more_vert, color: charcoal),
                             onSelected: (value) {
                               if (value == 'edit') editHabit(habit);
                               if (value == 'delete') deleteHabit(habit);
@@ -415,59 +485,16 @@ class _DashboardState extends State<Dashboard> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              target > 0
-                                  ? '${amount.toStringAsFixed(amount % 1 == 0 ? 0 : 1)}'
-                                      ' / ${target.toStringAsFixed(target % 1 == 0 ? 0 : 1)}'
-                                      ' ${habit['target_unit'] ?? ''}'
-                                  : 'No target set',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ),
-                          Text(
-                            target > 0
-                                ? '${(ratio * 100).round()}%'
-                                : 'Set a target',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: LinearProgressIndicator(
-                          value: ratio,
-                          minHeight: 8,
-                        ),
-                      ),
-                      if (reached) ...[
-                        const SizedBox(height: 10),
-                        const Row(
-                          children: [
-                            Icon(Icons.check_circle, size: 18),
-                            SizedBox(width: 6),
-                            Text('Daily target reached'),
-                          ],
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          }),
+              );
+            }),
         ],
       ),
     );
   }
 }
-
 
 class HabitForm extends StatefulWidget {
   final Map<String, Object?>? habit;
@@ -488,11 +515,15 @@ class _HabitFormState extends State<HabitForm> {
   @override
   void initState() {
     super.initState();
-    final h = widget.habit;
-    name = TextEditingController(text: h?['name'] as String? ?? '');
-    category = TextEditingController(text: h?['category'] as String? ?? '');
-    target = TextEditingController(text: h?['target_amount']?.toString() ?? '');
-    unit = TextEditingController(text: h?['target_unit'] as String? ?? '');
+    final habit = widget.habit;
+
+    name = TextEditingController(text: habit?['name'] as String? ?? '');
+    category =
+        TextEditingController(text: habit?['category'] as String? ?? '');
+    target =
+        TextEditingController(text: habit?['target_amount']?.toString() ?? '');
+    unit =
+        TextEditingController(text: habit?['target_unit'] as String? ?? '');
   }
 
   @override
@@ -504,50 +535,112 @@ class _HabitFormState extends State<HabitForm> {
     super.dispose();
   }
 
+  InputDecoration fieldDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      border: const OutlineInputBorder(),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 14,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final editing = widget.habit != null;
+
     return AlertDialog(
-      title: Text(widget.habit == null ? 'Create habit' : 'Edit habit'),
-      content: SingleChildScrollView(
-        child: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: name,
-                decoration: const InputDecoration(labelText: 'Habit name *'),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Enter a name' : null,
-              ),
-              TextFormField(
-                controller: category,
-                decoration: const InputDecoration(labelText: 'Category'),
-              ),
-              TextFormField(
-                controller: target,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.white,
+      titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 4),
+      contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
+      actionsPadding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+      title: Text(
+        editing ? 'Edit habit' : 'Create habit',
+        style: const TextStyle(
+          fontSize: 23,
+          fontWeight: FontWeight.w700,
+          color: charcoal,
+        ),
+      ),
+      content: SizedBox(
+        width: 360,
+        child: SingleChildScrollView(
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  editing ? 'Habit setup · ${name.text}' : 'Habit setup',
+                  style: const TextStyle(color: mutedText, fontSize: 13),
                 ),
-                decoration: const InputDecoration(labelText: 'Target amount'),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return null;
-                  final n = double.tryParse(v);
-                  return n == null || !n.isFinite || n <= 0
-                      ? 'Enter a number above zero'
-                      : null;
-                },
-              ),
-              TextFormField(
-                controller: unit,
-                decoration: const InputDecoration(labelText: 'Target unit'),
-              ),
-            ],
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: name,
+                  decoration: fieldDecoration('Habit name *'),
+                  validator: (value) =>
+                      value == null || value.trim().isEmpty
+                          ? 'Enter a habit name'
+                          : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: category,
+                  decoration: fieldDecoration('Category'),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: TextFormField(
+                        controller: target,
+                        keyboardType:
+                            const TextInputType.numberWithOptions(decimal: true),
+                        decoration: fieldDecoration('Goal'),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return null;
+                          }
+                          final amount = double.tryParse(value.trim());
+                          if (amount == null ||
+                              !amount.isFinite ||
+                              amount <= 0) {
+                            return 'Enter a positive number';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 3,
+                      child: TextFormField(
+                        controller: unit,
+                        decoration: fieldDecoration('Unit'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  target.text.trim().isEmpty
+                      ? 'You can set a target and unit for your habit.'
+                      : 'Target: ${target.text} ${unit.text}. '
+                          'Past activity records are kept.',
+                  style: const TextStyle(color: mutedText, fontSize: 12),
+                ),
+              ],
+            ),
           ),
         ),
       ),
       actions: [
-        TextButton(
+        OutlinedButton(
           onPressed: () => Navigator.pop(context, false),
           child: const Text('Cancel'),
         ),
@@ -558,11 +651,13 @@ class _HabitFormState extends State<HabitForm> {
 
   Future<void> save() async {
     if (!formKey.currentState!.validate()) return;
+
     final old = widget.habit;
 
     await HabitDatabase.instance.saveHabit({
       'name': name.text.trim(),
-      'category': category.text.trim().isEmpty ? null : category.text.trim(),
+      'category':
+          category.text.trim().isEmpty ? null : category.text.trim(),
       'target_amount': target.text.trim().isEmpty
           ? null
           : double.parse(target.text.trim()),
@@ -596,62 +691,74 @@ class _HabitDetailState extends State<HabitDetail> {
   }
 
   Future<void> load() async {
-    final result = await HabitDatabase.instance.entries(
-      widget.habit['id'] as int,
-    );
+    final result =
+        await HabitDatabase.instance.entries(widget.habit['id'] as int);
+
     if (mounted) setState(() => items = result);
   }
 
+  // Uses initialValue/onSaved rather than TextEditingController.
+  // This avoids disposing controllers while the dialog is animating closed.
   Future<void> logEntry() async {
-    final amountController = TextEditingController(
-      text: widget.habit['target_amount']?.toString() ?? '1',
-    );
-    final noteController = TextEditingController();
-    final key = GlobalKey<FormState>();
+    final formKey = GlobalKey<FormState>();
+
+    String amountText =
+        widget.habit['target_amount']?.toString() ?? '1';
+    String noteText = '';
 
     final result = await showDialog<Map<String, Object?>>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Log activity'),
         content: Form(
-          key: key,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: amountController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  initialValue: amountText,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText:
+                        'Amount (${widget.habit['target_unit'] ?? 'units'})',
+                  ),
+                  onSaved: (value) => amountText = value?.trim() ?? '',
+                  validator: (value) {
+                    final amount = double.tryParse(value ?? '');
+                    if (amount == null ||
+                        !amount.isFinite ||
+                        amount < 0) {
+                      return 'Enter a valid amount';
+                    }
+                    return null;
+                  },
                 ),
-                decoration: InputDecoration(
-                  labelText:
-                      'Amount (${widget.habit['target_unit'] ?? 'units'})',
+                const SizedBox(height: 12),
+                TextFormField(
+                  initialValue: '',
+                  decoration:
+                      const InputDecoration(labelText: 'Note (optional)'),
+                  onSaved: (value) => noteText = value?.trim() ?? '',
                 ),
-                validator: (v) {
-                  final n = double.tryParse(v ?? '');
-                  return n == null || !n.isFinite || n < 0
-                      ? 'Enter a valid amount'
-                      : null;
-                },
-              ),
-              TextField(
-                controller: noteController,
-                decoration: const InputDecoration(labelText: 'Note (optional)'),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () {
-              if (!key.currentState!.validate()) return;
-              Navigator.pop(context, {
-                'amount': double.parse(amountController.text),
-                'note': noteController.text.trim(),
+              if (!formKey.currentState!.validate()) return;
+              formKey.currentState!.save();
+
+              Navigator.pop(dialogContext, {
+                'amount': double.parse(amountText),
+                'note': noteText,
               });
             },
             child: const Text('Save activity'),
@@ -660,13 +767,12 @@ class _HabitDetailState extends State<HabitDetail> {
       ),
     );
 
-    if (result == null) return;
+    if (result == null || !mounted) return;
 
-    final today = DateTime.now();
-    final date =
-        '${today.year.toString().padLeft(4, '0')}-'
-        '${today.month.toString().padLeft(2, '0')}-'
-        '${today.day.toString().padLeft(2, '0')}';
+    final now = DateTime.now();
+    final date = '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
 
     await HabitDatabase.instance.addEntry({
       'habit_id': widget.habit['id'],
@@ -713,25 +819,28 @@ class _HabitDetailState extends State<HabitDetail> {
           children: [
             const Row(
               children: [
-                Icon(Icons.lightbulb_outline),
+                Icon(Icons.lightbulb_outline, color: charcoal),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Next-Step Habit Suggestion',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: charcoal,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(suggestion.reason),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
               'Suggested target: '
               '${suggestion.recommendedAmount.toStringAsFixed(1)} '
               '${widget.habit['target_unit'] ?? ''}',
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               children: [
@@ -742,9 +851,7 @@ class _HabitDetailState extends State<HabitDetail> {
                     child: const Text('Apply'),
                   ),
                 TextButton(
-                  onPressed: () {
-                    setState(() => suggestionDismissed = true);
-                  },
+                  onPressed: () => setState(() => suggestionDismissed = true),
                   child: const Text('Not now'),
                 ),
               ],
@@ -770,82 +877,137 @@ class _HabitDetailState extends State<HabitDetail> {
 
     final total = items.fold<double>(
       0,
-      (sum, e) => sum + (e['amount'] as num).toDouble(),
+      (sum, entry) => sum + (entry['amount'] as num).toDouble(),
     );
 
     return Scaffold(
+      backgroundColor: pageBackground,
       appBar: AppBar(title: Text(widget.habit['name'] as String)),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: logEntry,
+        backgroundColor: charcoal,
+        foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
         label: const Text('Log activity'),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
         children: [
           Text(
             widget.habit['category'] as String? ?? 'General',
-            style: Theme.of(context).textTheme.titleMedium,
+            style: const TextStyle(
+              color: mutedText,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Target: ${target ?? 'Not set'} '
-            '${widget.habit['target_unit'] ?? ''}',
-          ),
-          Text('Total recorded: $total ${widget.habit['target_unit'] ?? ''}'),
-          const SizedBox(height: 16),
-          if (!suggestionDismissed) suggestionCard(suggestion, target),
-          const SizedBox(height: 20),
-          Text(
-            'Activity history',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          if (items.isEmpty) const Text('No activity recorded yet.'),
-          ...items.map(
-            (entry) => Card(
-              child: ListTile(
-                title: Text(
-                  '${entry['amount']} ${widget.habit['target_unit'] ?? ''}',
-                ),
-                subtitle: Text(
-                  '${entry['entry_date']}'
-                  '${entry['note'] == null ? '' : '\n${entry['note']}'}',
-                ),
-                isThreeLine: entry['note'] != null,
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () async {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Delete activity?'),
-                        content: const Text(
-                          'This activity entry will be permanently deleted.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text('Cancel'),
-                          ),
-                          FilledButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: const Text('Delete'),
-                          ),
-                        ],
-                      ),
-                    );
-
-                    if (confirm == true) {
-                      await HabitDatabase.instance.deleteEntry(
-                        entry['id'] as int,
-                      );
-                      await load();
-                    }
-                  },
-                ),
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Current target',
+                      style: TextStyle(color: mutedText)),
+                  const SizedBox(height: 5),
+                  Text(
+                    '${target ?? 'Not set'} ${widget.habit['target_unit'] ?? ''}',
+                    style: const TextStyle(
+                      color: charcoal,
+                      fontSize: 23,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Divider(height: 24),
+                  const Text('Total recorded',
+                      style: TextStyle(color: mutedText)),
+                  const SizedBox(height: 5),
+                  Text(
+                    '$total ${widget.habit['target_unit'] ?? ''}',
+                    style: const TextStyle(
+                      color: charcoal,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
+          const SizedBox(height: 16),
+          if (!suggestionDismissed) suggestionCard(suggestion, target),
+          const SizedBox(height: 22),
+          Text(
+            'Activity history',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: charcoal,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 12),
+          if (items.isEmpty)
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(18),
+                child: Text(
+                  'No activity recorded yet. Tap Log activity to add your first entry.',
+                  style: TextStyle(color: mutedText),
+                ),
+              ),
+            )
+          else
+            ...items.map(
+              (entry) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Card(
+                  child: ListTile(
+                    title: Text(
+                      '${entry['amount']} ${widget.habit['target_unit'] ?? ''}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      '${entry['entry_date']}'
+                      '${entry['note'] == null ? '' : '\n${entry['note']}'}',
+                    ),
+                    isThreeLine: entry['note'] != null,
+                    trailing: IconButton(
+                      tooltip: 'Delete activity',
+                      icon: const Icon(Icons.delete_outline, color: charcoal),
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Delete activity?'),
+                            content: const Text(
+                              'This activity entry will be permanently deleted.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(context, false),
+                                child: const Text('Cancel'),
+                              ),
+                              FilledButton(
+                                onPressed: () =>
+                                    Navigator.pop(context, true),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirm == true) {
+                          await HabitDatabase.instance.deleteEntry(
+                            entry['id'] as int,
+                          );
+                          await load();
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -895,21 +1057,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget build(BuildContext context) {
     final filteredEntries = selectedHabitId == null
         ? entries
-        : entries.where((e) => e['habit_id'] == selectedHabitId).toList();
+        : entries
+            .where((entry) => entry['habit_id'] == selectedHabitId)
+            .toList();
 
     final total = filteredEntries.fold<double>(
       0,
-      (sum, e) => sum + (e['amount'] as num).toDouble(),
+      (sum, entry) => sum + (entry['amount'] as num).toDouble(),
     );
-
-    final average = filteredEntries.isEmpty
-        ? 0.0
-        : total / filteredEntries.length;
-
-    final completedCount = filteredEntries
-        .where((entry) => entry['completed'] == 1)
-        .length;
-
+    final average =
+        filteredEntries.isEmpty ? 0.0 : total / filteredEntries.length;
+    final completedCount =
+        filteredEntries.where((entry) => entry['completed'] == 1).length;
     final completionRate = filteredEntries.isEmpty
         ? 0.0
         : completedCount / filteredEntries.length * 100;
@@ -917,25 +1076,32 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final habitSummaries = <String, Map<String, Object?>>{};
 
     for (final entry in filteredEntries) {
-      final name = entry['habit_name'] as String;
+      final habitName = entry['habit_name'] as String;
       final summary = habitSummaries.putIfAbsent(
-        name,
+        habitName,
         () => {'count': 0, 'total': 0.0},
       );
-
       summary['count'] = (summary['count'] as int) + 1;
       summary['total'] =
           (summary['total'] as double) + (entry['amount'] as num).toDouble();
     }
 
     return ListView(
-      padding: EdgeInsets.all(compact ? 8 : 16),
+      padding: EdgeInsets.fromLTRB(
+        compact ? 10 : 16,
+        20,
+        compact ? 10 : 16,
+        24,
+      ),
       children: [
         Text(
           'History & insights',
-          style: Theme.of(context).textTheme.headlineSmall,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: charcoal,
+                fontWeight: FontWeight.w700,
+              ),
         ),
-        SizedBox(height: compact ? 6 : 12),
+        const SizedBox(height: 18),
         DropdownButtonFormField<int?>(
           initialValue: selectedHabitId,
           decoration: const InputDecoration(
@@ -954,67 +1120,176 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
             ),
           ],
-          onChanged: (value) {
-            setState(() => selectedHabitId = value);
-          },
+          onChanged: (value) => setState(() => selectedHabitId = value),
         ),
-        SizedBox(height: compact ? 6 : 12),
+        const SizedBox(height: 16),
         Card(
-          child: ListTile(
-            visualDensity: compact
-                ? VisualDensity.compact
-                : VisualDensity.standard,
-            leading: const Icon(Icons.insights),
-            title: Text('${filteredEntries.length} activity entries'),
-            subtitle: Text(
-              'Combined recorded amount: ${total.toStringAsFixed(1)}\n'
-              'Average per entry: ${average.toStringAsFixed(1)}\n'
-              'Completion rate: ${completionRate.toStringAsFixed(1)}%',
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 4, right: 14),
+                  child: Icon(Icons.insights, color: charcoal, size: 25),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${filteredEntries.length} activity entries',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: charcoal,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _StatLine(
+                        label: 'Combined recorded amount',
+                        value: total.toStringAsFixed(1),
+                      ),
+                      _StatLine(
+                        label: 'Average per entry',
+                        value: average.toStringAsFixed(1),
+                      ),
+                      _StatLine(
+                        label: 'Completion rate',
+                        value: '${completionRate.toStringAsFixed(1)}%',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-        SizedBox(height: compact ? 6 : 12),
+        const SizedBox(height: 22),
         Text(
           'Progress by habit',
-          style: Theme.of(context).textTheme.titleLarge,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: charcoal,
+                fontWeight: FontWeight.w700,
+              ),
         ),
-        SizedBox(height: compact ? 4 : 8),
+        const SizedBox(height: 12),
         if (habitSummaries.isEmpty)
-          const Text('No progress summaries available yet.')
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'No progress summaries available yet.',
+                style: TextStyle(color: mutedText),
+              ),
+            ),
+          )
         else
           ...habitSummaries.entries.map(
-            (item) => Card(
-              child: ListTile(
-                visualDensity: compact
-                    ? VisualDensity.compact
-                    : VisualDensity.standard,
-                title: Text(item.key),
-                subtitle: Text('${item.value['count']} activity entries'),
-                trailing: Text(
-                  'Total: ${(item.value['total'] as double).toStringAsFixed(1)}',
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(15),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.key,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: charcoal,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              '${item.value['count']} activity entries',
+                              style: const TextStyle(color: mutedText),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Total: ${(item.value['total'] as double).toStringAsFixed(1)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: charcoal,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        SizedBox(height: compact ? 4 : 8),
+        const SizedBox(height: 18),
+        Text(
+          'Recent activity',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: charcoal,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 10),
         if (loading)
           const Center(child: CircularProgressIndicator())
         else if (filteredEntries.isEmpty)
-          const Text('No activity found for this selection.')
+          const Text(
+            'No activity found for this selection.',
+            style: TextStyle(color: mutedText),
+          )
         else
           ...filteredEntries.map(
-            (e) => ListTile(
-              visualDensity: compact
-                  ? VisualDensity.compact
-                  : VisualDensity.standard,
-              title: Text(e['habit_name'] as String),
-              subtitle: Text(
-                '${e['entry_date']} • ${e['amount']}'
-                '${e['note'] == null ? '' : ' • ${e['note']}'}',
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Card(
+                child: ListTile(
+                  dense: compact,
+                  title: Text(
+                    entry['habit_name'] as String,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    '${entry['entry_date']} • ${entry['amount']}'
+                    '${entry['note'] == null ? '' : ' • ${entry['note']}'}',
+                  ),
+                ),
               ),
             ),
           ),
       ],
+    );
+  }
+}
+
+class _StatLine extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _StatLine({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Wrap(
+        spacing: 5,
+        children: [
+          Text('$label:', style: const TextStyle(color: mutedText)),
+          Text(
+            value,
+            style: const TextStyle(
+              color: charcoal,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1039,6 +1314,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
+
     setState(() {
       reminders = prefs.getBool('reminders') ?? false;
       compact = prefs.getBool('compact') ?? false;
@@ -1055,32 +1331,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('Settings', style: Theme.of(context).textTheme.headlineSmall),
-        SwitchListTile(
-          title: const Text('Daily reminder preference'),
-          subtitle: const Text(
-            'Stores your preference locally; notifications are not enabled.',
+        Text(
+          'Settings',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: charcoal,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 18),
+        Card(
+          child: Column(
+            children: [
+              SwitchListTile(
+                activeTrackColor: charcoal,
+                title: const Text(
+                  'Daily reminder preference',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'Stores your preference locally; notifications are not enabled.',
+                ),
+                value: reminders,
+                onChanged: (value) {
+                  setState(() => reminders = value);
+                  save('reminders', value);
+                },
+              ),
+              const Divider(height: 1),
+              SwitchListTile(
+                activeTrackColor: charcoal,
+                title: const Text(
+                  'Compact display',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'Save your display preference on this device.',
+                ),
+                value: compact,
+                onChanged: (value) {
+                  setState(() => compact = value);
+                  save('compact', value);
+                },
+              ),
+            ],
           ),
-          value: reminders,
-          onChanged: (v) {
-            setState(() => reminders = v);
-            save('reminders', v);
-          },
         ),
-        SwitchListTile(
-          title: const Text('Compact display'),
-          subtitle: const Text('Save your display preference on this device.'),
-          value: compact,
-          onChanged: (v) {
-            setState(() => compact = v);
-            save('compact', v);
-          },
-        ),
-        const ListTile(
-          leading: Icon(Icons.cloud_off),
-          title: Text('Offline-first'),
-          subtitle: Text(
-            'Habits and activity are stored locally on this device.',
+        const SizedBox(height: 12),
+        const Card(
+          child: ListTile(
+            leading: Icon(Icons.cloud_off, color: charcoal),
+            title: Text(
+              'Offline-first',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              'Habits and activity are stored locally on this device.',
+            ),
           ),
         ),
       ],
